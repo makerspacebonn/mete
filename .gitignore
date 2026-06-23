@@ -33,3 +33,6 @@ public/assets
 .idea/
 
 tabletFix/node_modules
+
+# Ignore local development docker-compose override
+docker-compose.dev.yml

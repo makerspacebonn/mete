@@ -131,4 +131,49 @@ class UsersControllerTest < ActionController::TestCase
     end
     assert_redirected_to users_path
   end
+
+  test "most active users ranks audited users by recent transaction count" do
+    5.times { Audit.create!(difference: -1, user: users(:two), created_at: 1.day.ago) }
+    3.times { Audit.create!(difference: -1, user: users(:one), created_at: 1.day.ago) }
+
+    assert_equal [[users(:two), 5], [users(:one), 3]],
+                 @controller.send(:most_active_users)
+  end
+
+  test "most active users ignores audits older than two months" do
+    Audit.create!(difference: -1, user: users(:one), created_at: 1.day.ago)
+    3.times { Audit.create!(difference: -1, user: users(:one), created_at: 3.months.ago) }
+
+    assert_equal [[users(:one), 1]], @controller.send(:most_active_users)
+  end
+
+  test "most active users ignores anonymous (unattributed) audits" do
+    Audit.create!(difference: -1, user: nil, created_at: 1.day.ago)
+
+    assert_empty @controller.send(:most_active_users)
+  end
+
+  test "most active users returns at most ten users, dropping the least active" do
+    # create 11 users with strictly increasing recent audit counts (1..11)
+    created = (1..11).map do |count|
+      user = User.create!(name: "active-#{count}")
+      count.times { Audit.create!(difference: -1, user: user, created_at: 1.day.ago) }
+      user
+    end
+
+    result = @controller.send(:most_active_users)
+    assert_equal 10, result.size
+    # the user with only one audit must be the one left out
+    assert_not_includes result.map(&:first), created.first
+    # results are ordered most-active first
+    assert_equal created.last, result.first.first
+  end
+
+  test "index assigns the most active users" do
+    Audit.create!(difference: -1, user: users(:two), created_at: 1.day.ago)
+
+    get :index
+    assert_response :success
+    assert_equal [[users(:two), 1]], assigns(:active_users)
+  end
 end

@@ -13,6 +13,7 @@ class UsersController < ApplicationController
       end
     end
     @users = User.order(active: :desc).order_by_name_asc
+    @active_users = most_active_users
     # index.html.haml
   end
 
@@ -137,6 +138,23 @@ class UsersController < ApplicationController
   end
 
   private
+
+  # Most active users over the last two months, derived from audit data.
+  # Only users who opted into auditing have their transactions attributed
+  # (see User#after_save), so this leaderboard covers those users only.
+  def most_active_users(limit: 10, since: 2.months.ago)
+    # Grouping by the :user association makes #count return a hash keyed by the
+    # loaded User objects, ordered by the COUNT(*) DESC we set via #reorder
+    # (which also drops Audit's default created_at ordering).
+    Audit
+      .where.not(user: nil)
+      .where("created_at >= ?", since)
+      .group(:user)
+      .reorder(Arel.sql("COUNT(*) DESC"))
+      .limit(limit)
+      .count
+      .to_a # => [[user, count], ...]
+  end
 
   def buy_drink
     @user.buy(@drink)

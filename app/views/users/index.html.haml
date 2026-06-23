@@ -5,6 +5,16 @@
   %li.nav-item
     = link_to 'new user', [:new, :user], class: "nav-link"
 
+- if @active_users.present?
+  .row.most-active
+    .col-12
+      %h5.mb-0 Most active
+      %small.text-muted Top #{@active_users.size}, last 2 months
+  .row.most-active-cards
+    - @active_users.each do |user, count|
+      = render "active_user", user: user, count: count
+  %hr
+
 .row
   %form{:method => "GET"}
     %small
