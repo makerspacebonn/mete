@@ -25,6 +25,8 @@ Mete::Application.routes.draw do
 
   # Regular routes
 
+  get 'avatar_proxy' => 'avatar_proxy#show', as: :avatar_proxy
+
   resources :drinks
   resources :barcodes
 

@@ -8,7 +8,13 @@ module UsersHelper
       if user.avatar.nil? or user.avatar.empty? then
         content_tag :div, nil, class: [ 'avatar-missing' ]
       else
-        gravatar_image_tag user.avatar, class: user.active? ? '' : 'disabled'
+        if request.ssl?
+          gravatar_image_tag user.avatar, class: user.active? ? '' : 'disabled'
+        else
+          gravatar_url = gravatar_url_for(user.avatar)
+          proxy_url = avatar_proxy_path(url: gravatar_url)
+          image_tag proxy_url, class: user.active? ? '' : 'disabled', alt: "Avatar for #{user.name}", width: 80, height: 80
+        end
       end
     when 'webfinger'
       webfinger_activitypub_image_tag user.avatar
@@ -38,6 +44,19 @@ module UsersHelper
     end
 
   end
+
+  def gravatar_url_for(value, size = 80, default = 'identicon')
+    require 'digest/md5'
+
+    hash = if value.to_s.include?('@')
+      Digest::MD5.hexdigest(value.strip.downcase)
+    else
+      value.to_s
+    end
+
+    "https://www.gravatar.com/avatar/#{hash}?s=#{size}&d=#{CGI.escape(default)}"
+  end
+
 
   def redirect_path(user)
     return users_path + '/#' + user.initial
